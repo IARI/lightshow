@@ -11,8 +11,7 @@ from PyQt5.QtGui import QIcon
 from gui_ui import Ui_MainWindow
 from router import FreifunkRouter
 from threading import Thread, Event
-from wrapt import decorator
-from functools import partial
+# from wrapt import decorator
 from time import sleep
 import re
 
@@ -128,11 +127,12 @@ class Gui(QMainWindow, Ui_MainWindow):
         print('program started')
 
     def stopProgram(self):
-        try:
-            self.program.stop()
-            print('program stopped')
-        except:
-            print("program can't be stopped")
+        if self.program and self.program.isAlive:
+            try:
+                self.program.stop()
+                print('program stopped')
+            except:
+                print("program can't be stopped")
 
     @property
     def all_led_list_items(self):

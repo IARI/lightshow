@@ -109,7 +109,7 @@ class FreifunkRouter(QObject):
             self.ssh.logout()
             print('logged out from {}'.format(self._lastServer))
             self.connection_changed.emit(None)
-        finally:
+        except:
             pass
 
     def __del__(self):
