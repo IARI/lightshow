@@ -11,7 +11,7 @@ from PyQt5.QtGui import QIcon
 from gui_ui import Ui_MainWindow
 from router import FreifunkRouter
 from threading import Thread, Event
-# from wrapt import decorator
+from wrapt import synchronized
 from time import sleep
 import re
 
@@ -19,11 +19,11 @@ import re
 handlers = []
 
 
-def handler_for(regexp, *types):
+def handler_for(regexp, wait, *types):
     # @decorator()
     # def gethandler(f, self, args, kwargs):
     def gethandler(f):
-        handlers.append((re.compile(regexp), f, types))
+        handlers.append((re.compile(regexp), f, wait, types))
         return f
 
     return gethandler
@@ -32,54 +32,91 @@ def handler_for(regexp, *types):
 class Program(Thread):
     def __init__(self, data, router, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.data = data
-        self.current = 0
         self._stopped = Event()
         self.router = router
         self.setDaemon(True)
-        self.handlers = []
-        self.delay = FreifunkRouter.SIGNAL_DELAY
+        self.resetProgramData(data)
 
     def stop(self):
         self._stopped.set()
 
+    @property
+    def length(self):
+        return len(self.data)
+
+    @synchronized
+    def resetProgramData(self, data):
+        self.data = data
+        self.current = 0
+        self.delay = FreifunkRouter.SIGNAL_DELAY
+
     def run(self):
         while not self._stopped.isSet():
-            self.current %= len(self.data)
-            try:
-                self.eval(self.data[self.current])
-            except Exception as e:
-                print('error in program: ' + str(e))
-            sleep(self.delay)
-            self.current += 1
+            self.oneStep()
+
+    @synchronized
+    def oneStep(self):
+        self.current %= self.length
+        try:
+            self.eval(self.data[self.current])
+        except Exception as e:
+            print('error in program: ' + str(e))
+        self.current += 1
+        if self.current == self.length:
+            print('program terminated naturally')
+            self.stop()
 
     def eval(self, command):
-        for pattern, f, types in handlers:
+        for pattern, f, wait, types in handlers:
             m = re.match(pattern, command)
             if m:
                 args = [t(s) for t, s in zip(types, m.groups())]
                 f(self, *args)
+                if wait:
+                    sleep(self.delay)
                 return
         raise Exception("Command {} could not be interpreted".format(command))
 
-    @handler_for("(\d+)$", int)
+    @handler_for("(\d+)$", True, int)
     def toggle(self, lid):
         self.router[lid] = int(not self.router[lid])
 
-    @handler_for("\+(\d+)$", int)
+    @handler_for("\+(\d+)$", True, int)
     def enable(self, lid):
         self.router[lid] = 1
 
-    @handler_for("\-(\d+)$", int)
+    @handler_for("\-(\d+)$", True, int)
     def disable(self, lid):
         self.router[lid] = 0
 
-    @handler_for("(\d+(,\d+)+)$", str)
+    @handler_for("(\d+(,\d+)+)$", False, str)
     def para(self, ls):
         for c in ls.split(','):
             self.eval(c)
 
-    @handler_for("$")
+    @handler_for("d(\d+(\.\d+)?)$", False, float)
+    def setDelay(self, d):
+        self.delay = max(d, FreifunkRouter.SIGNAL_DELAY)
+
+    @handler_for("g(\d+)$", False, int)
+    def setPC(self, pc):
+        self.current = pc - 1
+
+    @handler_for("c(\d+)-(\d+)$", False, int, int)
+    def cond(self, lid, pc):
+        if not self.router[lid]:
+            self.setPC(pc)
+
+    @handler_for("t([a-zA-Z0-9]+)$", True, str)
+    def setPC(self, text):
+        print(text)
+
+    @handler_for("x$", False)
+    def exit(self):
+        print('program terminated with x')
+        self.stop()
+
+    @handler_for("$", True)
     def empty(self):
         print('Empty program is boring!')
 
@@ -99,8 +136,9 @@ class Gui(QMainWindow, Ui_MainWindow):
 
         self.settings = QSettings('light_show', 'router')
         self.input_routerip.setText(self.settings.value('address', ""))
-        self.input_user.setText(self.settings.value('user'))
+        self.input_user.setText(self.settings.value('user', 'root'))
         self.input_path.setText(self.settings.value('path', Gui.DEFAULT_PATH))
+        self.edt_script.setPlainText(self.settings.value('prog', ''))
 
         self.router = FreifunkRouter()
         self.router.connection_changed.connect(self.connection_event)
@@ -123,11 +161,23 @@ class Gui(QMainWindow, Ui_MainWindow):
         self.btn_none.clicked.connect(self.list_leds.clearSelection)
 
     def runProgram(self):
-        l_prog = re.split("\s", self.edt_script.toPlainText().strip())
-        print(l_prog)
-        self.program = Program(l_prog, self.router)
+        try:
+            self.program.stop()
+        except:
+            pass
+        self.program = Program(self.readProgram(), self.router)
         self.program.start()
         print('program started')
+
+    def readProgram(self):
+        l_progs = re.split("[\r\n]+", self.edt_script.toPlainText().strip())
+        l_prog = re.split("[\s]+", l_progs[0])
+        print(l_prog)
+        return l_prog
+
+    def cursorChanged(self):
+        l_prog = self.readProgram()
+        self.program.resetProgramData(l_prog)
 
     def stopProgram(self):
         if self.program and self.program.isAlive:
@@ -180,3 +230,4 @@ class Gui(QMainWindow, Ui_MainWindow):
         self.settings.setValue('user', self.input_user.text())
         # self.settings.setValue('password', self.input_user.text())
         self.settings.setValue('path', self.input_path.text())
+        self.settings.setValue('prog', self.edt_script.toPlainText())

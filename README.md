@@ -51,6 +51,28 @@ run the lightshow script from lightshow directory :
 
 	python3 lightshow.py
 	
+## Scripting
+
+In the main text window little programs can be written.
+A program is a series of statements separated by horizontal whitespace.
+when run, all statements will be executed in the order given.
+In the following an integer n references the n'th light starting with 0
+A statement can be one of the following:
+
+        * n             toggle light n
+        
+        * +n, -n        turn light n on (+) rsp. off (-)
+        
+        * s,s...        execute statements in one step
+        
+        * df            set the delay between commands to f seconds where f is a float (i.e. 0.5)
+        
+        * gi            goto i - continue execution with the ith statement of the program
+        
+        * pt            print text t to console
+         
+        * x             terminate program
+	
 	
 ## Contact
 
