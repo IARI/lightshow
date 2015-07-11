@@ -170,31 +170,113 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="4">
-       <widget class="QGroupBox" name="groupBox">
-        <property name="title">
-         <string>Freifunk Router IP</string>
+      <item row="0" column="1">
+       <widget class="QTabWidget" name="tabWidget">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
-        <layout class="QHBoxLayout" name="horizontalLayout">
-         <item>
-          <widget class="QLineEdit" name="input_routerip">
-           <property name="text">
-            <string/>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="btn_connect">
-           <property name="text">
-            <string>Connect</string>
-           </property>
-           <property name="icon">
-            <iconset resource="gui.qrc">
-             <normaloff>:/icons/icons/red.png</normaloff>:/icons/icons/red.png</iconset>
-           </property>
-          </widget>
-         </item>
-        </layout>
+        <property name="currentIndex">
+         <number>0</number>
+        </property>
+        <widget class="QWidget" name="tab_connection">
+         <attribute name="title">
+          <string>Connection</string>
+         </attribute>
+         <layout class="QGridLayout" name="gridLayout_4">
+          <item row="2" column="5">
+           <widget class="QLineEdit" name="input_password">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="echoMode">
+             <enum>QLineEdit::Password</enum>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="6">
+           <widget class="QPushButton" name="btn_connect">
+            <property name="text">
+             <string>Connect</string>
+            </property>
+            <property name="icon">
+             <iconset resource="gui.qrc">
+              <normaloff>:/icons/icons/red.png</normaloff>:/icons/icons/red.png</iconset>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="2">
+           <widget class="QLineEdit" name="input_routerip">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLineEdit" name="input_user">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_user">
+            <property name="text">
+             <string>user</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2">
+           <widget class="QLabel" name="label_host">
+            <property name="text">
+             <string>host</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="5">
+           <widget class="QLabel" name="label_password">
+            <property name="text">
+             <string>password</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QLabel" name="label">
+            <property name="text">
+             <string>@</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="tab_settings">
+         <attribute name="title">
+          <string>Settings</string>
+         </attribute>
+         <layout class="QGridLayout" name="gridLayout_5">
+          <item row="1" column="0">
+           <widget class="QLineEdit" name="input_path"/>
+          </item>
+          <item row="0" column="0">
+           <widget class="QLabel" name="_path">
+            <property name="text">
+             <string>Path</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+         <zorder>label_host</zorder>
+         <zorder>input_path</zorder>
+         <zorder>_path</zorder>
+        </widget>
        </widget>
       </item>
      </layout>

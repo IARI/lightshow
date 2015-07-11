@@ -23,8 +23,6 @@ def connection_demon(delay=0):
 class FreifunkRouter(QObject):
     # delay between signals on led-toggles sent to the router on a channel
     SIGNAL_DELAY = 0.25
-    # path where the led directories are
-    LED_PATH = "/sys/devices/platform/leds-gpio/leds/"
     # emitted when connection status to router changes
     connection_changed = pyqtSignal(str)
     # emitted when led-values change
@@ -59,43 +57,57 @@ class FreifunkRouter(QObject):
             return self._lastServer
         except Exception as e:
             print('No connection\n', e)
-            self._connected.clear()
+            if self._connected.is_set():
+                self._send_disconnect()
             return None
 
     @synchronized
-    def connect(self, address, user="root"):
+    def connect(self, address, user="root", password='', path='~'):
         connected = self.connected
         if connected == address:
             print('already connected to {}'.format(connected))
             return
         elif connected:
             self.disconnect()
+            # time.sleep(0.2)
 
         self.ssh = pxssh()
-        print('logging in at {} as {}'.format(address, user))
+        pw_feedback = 'with' if password else 'without'
+        print('logging in at {} as {} {} password'
+              .format(address, user, pw_feedback))
         try:
-            r = self.ssh.login(address, user)
+            r = self.ssh.login(address, user, password)
         except Exception as e:
             print("SSH session failed.\nError Message:\n", e)
             return False
         if not r:
             print("SSH session failed on login.")
             print(str(self.ssh))
-        else:
-            self.ssh.setwinsize(400, 400)
-            self.ssh.prompt()
-            self._connected.set()
-            self._lastServer = address
-            print("SSH session login successful")
-            self.ssh.sendline('cd {}'.format(self.LED_PATH))
-            self.ssh.prompt()
-            self.ssh.sendline('uptime')
-            self.ssh.prompt()  # match the prompt
-            print(self.ssh.before)  # print everything before the prompt.
-            self.setup_leds()
-            self.read_router_status()
-            self.connection_changed.emit(address)
-        return r
+            return False
+
+        self.ssh.setwinsize(400, 400)
+        self.ssh.prompt(2)
+        self._lastServer = address
+        print("SSH session login successful")
+        time.sleep(0.1)
+        if not self.test_dir(path):
+            print("directory '{}' does not exist".format(path))
+            return False
+        self.ssh.sendline('cd {}'.format(path))
+        self.ssh.prompt()
+        self.ssh.sendline('uptime')
+        self.ssh.prompt()  # match the prompt
+        print(self.ssh.before)  # print everything before the prompt.
+        self.setup_leds()
+        self.read_router_status()
+        self._connected.set()
+        self.connection_changed.emit(address)
+        return True
+
+    def test_dir(self, path):
+        command = "if test -d {}; then echo 1; else echo 0; fi".format(path)
+        pattern = '.*(\d)\s*$'
+        return int(self.read_command(pattern, command)[0].strip())
 
     def setup_leds(self):
         command = "ls -x --color=never"
@@ -108,9 +120,14 @@ class FreifunkRouter(QObject):
         try:
             self.ssh.logout()
             print('logged out from {}'.format(self._lastServer))
-            self.connection_changed.emit(None)
+            self._send_disconnect()
         except:
             pass
+
+    @synchronized
+    def _send_disconnect(self):
+        self.connection_changed.emit(None)
+        self._connected.clear()
 
     def __del__(self):
         self.disconnect()
@@ -130,7 +147,7 @@ class FreifunkRouter(QObject):
                     self.read_state[i] = v
                 self.send_set_items(sends)
             except OSError:
-                self._connected.clear()
+                self._send_disconnect()
             except Exception as e:
                 print(e)
             self._modelChanged.clear()
@@ -147,7 +164,7 @@ class FreifunkRouter(QObject):
                     self.goal_state[:] = v
                     self.model_changed.emit()
         except OSError:
-            self._connected.clear()
+            self._send_disconnect()
         except Exception as e:
             print(e)
 
@@ -183,12 +200,20 @@ class FreifunkRouter(QObject):
     def read_command(self, pattern, *commands):
         cs = self.command_wrapper(*commands)
         self.ssh.sendline(cs)
-        self.ssh.prompt()
-        text = self.ssh.before.decode()
-        m = re.search(pattern, text, re.M | re.S)
+        m = None
+        for i in range(3):
+            if self.ssh.prompt(1):
+                text = self.ssh.before.decode()
+                m = re.search(pattern, text, re.M | re.S)
+                if m is None:
+                    print('failed matching attempt {}'.format(i))
+                else:
+                    break
+            else:
+                print(" No prompt on try {}".format(i))
         if m is None:
-            raise Exception('could not find "{}" in "{}"'
-                            .format(pattern, text))
+            raise Exception(
+                'could not find "{}" in "{}"'.format(pattern, text))
         return m.groups()
 
     def reset_channel(self, nr):

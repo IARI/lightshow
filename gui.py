@@ -85,7 +85,8 @@ class Program(Thread):
 
 
 class Gui(QMainWindow, Ui_MainWindow):
-    # LED_AMOUNT = 4
+    # default path for led directories are
+    DEFAULT_PATH = '/sys/devices/platform/leds-gpio/leds/'
 
     def __init__(self):
         QObject.__init__(self)
@@ -98,6 +99,8 @@ class Gui(QMainWindow, Ui_MainWindow):
 
         self.settings = QSettings('light_show', 'router')
         self.input_routerip.setText(self.settings.value('address', ""))
+        self.input_user.setText(self.settings.value('user'))
+        self.input_path.setText(self.settings.value('path', Gui.DEFAULT_PATH))
 
         self.router = FreifunkRouter()
         self.router.connection_changed.connect(self.connection_event)
@@ -165,9 +168,15 @@ class Gui(QMainWindow, Ui_MainWindow):
 
     def connect(self):
         address = self.input_routerip.text()
-        self.router.connect(address)
+        user = self.input_user.text()
+        password = self.input_password.text()
+        path = self.input_path.text()
+        self.router.connect(address, user or "root", password, path)
 
     def closeEvent(self, event):
         self.stopProgram()
         self.router.disconnect()
         self.settings.setValue('address', self.input_routerip.text())
+        self.settings.setValue('user', self.input_user.text())
+        # self.settings.setValue('password', self.input_user.text())
+        self.settings.setValue('path', self.input_path.text())

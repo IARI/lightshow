@@ -17,17 +17,17 @@ control leds of a Freifunk router
 
 ## Installation
 
-No builds available, you gotta build it yourself atmfor now..
+No builds available, you gotta build it yourself for now..
 
 ### Linux
 
 * Prepare your Freifunk router :
 
-        make sure you get root access via ssh key to your router
+        make sure you get ssh access to your router
 
 * Install python modules : 
 
-        sudo aptitude install python3 python3-pip python3-pyqt5
+        sudo apt-get install python3 python3-pip python3-pyqt5
         sudo pip3 install pexpect
         sudo pip3 install wrapt
 
@@ -47,7 +47,7 @@ No builds available, you gotta build it yourself atmfor now..
 
 ### Linux
 
-Start Jack audio server and then run SuperBoucle.sh script from SuperBoucle directory :
+run the lightshow script from lightshow directory :
 
 	python3 lightshow.py
 	
